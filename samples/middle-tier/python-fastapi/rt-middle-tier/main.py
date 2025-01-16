@@ -53,6 +53,10 @@ class ControlMessage(TypedDict):
 
 WSMessage = Union[TextDelta, Transcription, UserMessage, ControlMessage]
 
+PROMPT = """
+
+"""
+
 
 class RTSession:
     def __init__(self, websocket: WebSocket, backend: str | None):
@@ -106,7 +110,10 @@ class RTSession:
             voice="alloy",
             input_audio_format="pcm16",
             input_audio_transcription=InputAudioTranscription(model="whisper-1"),
-            turn_detection=ServerVAD(),
+            turn_detection=ServerVAD(
+                threshold=0.7, prefix_padding_ms=500, silence_duration_ms=1000
+            ),
+            instructions=PROMPT,
         )
 
         greeting: ControlMessage = {
@@ -120,6 +127,7 @@ class RTSession:
 
     async def handle_binary_message(self, message: bytes):
         try:
+            self.logger.debug(f"Received binary message of length: {len(message)}")
             await self.client.send_audio(message)
         except Exception as error:
             self.logger.error(f"Failed to send audio data: {error}")
